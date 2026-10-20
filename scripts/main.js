@@ -472,6 +472,10 @@ var GRUPOS = [
 		nome: "Campo e água"
 	},
 	{
+		id: "caminho",
+		nome: "Estradas e rios"
+	},
+	{
 		id: "montanha",
 		nome: "Montanha"
 	},
@@ -599,6 +603,21 @@ var PALETA = [
 		nome,
 		grupo: "campo",
 		camada: "terreno"
+	})),
+	...[
+		["estrada-reta", "Estrada reta"],
+		["estrada-curva", "Estrada em curva"],
+		["estrada-fechada", "Estrada em curva fechada"],
+		["estrada-fim", "Fim de estrada"],
+		["rio-reto", "Rio reto"],
+		["rio-curvo", "Rio em curva"],
+		["rio-fechado", "Rio em curva fechada"],
+		["rio-nascente", "Nascente"]
+	].map(([a, nome]) => ({
+		id: `caminho/${a}`,
+		nome,
+		grupo: "caminho",
+		camada: "caminho"
 	})),
 	...[
 		"montanha",
