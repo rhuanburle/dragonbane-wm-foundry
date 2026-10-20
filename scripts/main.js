@@ -461,155 +461,159 @@ async function mandarPvPd(ator, heroId, callId, corpo) {
 }
 //#endregion
 //#region src/data/mapa/paleta.ts
-var PALETA = [
+/** As abas da paleta. */
+var GRUPOS = [
 	{
 		id: "floresta",
-		nome: "Floresta",
-		camada: "terreno"
+		nome: "Floresta"
 	},
 	{
-		id: "bosque",
-		nome: "Bosque",
-		camada: "terreno"
+		id: "campo",
+		nome: "Campo e água"
 	},
 	{
-		id: "pinheiral",
-		nome: "Pinheiral",
-		camada: "terreno"
-	},
-	{
-		id: "planicie",
-		nome: "Planície",
-		camada: "terreno"
-	},
-	{
-		id: "plantacao",
-		nome: "Plantação",
-		camada: "terreno"
-	},
-	{
-		id: "colinas",
-		nome: "Colinas",
-		camada: "terreno"
-	},
-	{
-		id: "montanhas",
-		nome: "Montanhas",
-		camada: "terreno"
-	},
-	{
-		id: "pantano",
-		nome: "Pântano",
-		camada: "terreno"
+		id: "montanha",
+		nome: "Montanha"
 	},
 	{
 		id: "deserto",
-		nome: "Deserto",
-		camada: "terreno"
+		nome: "Deserto"
 	},
 	{
-		id: "ermo",
-		nome: "Ermo",
-		camada: "terreno"
-	},
-	{
-		id: "mar",
-		nome: "Mar",
-		camada: "terreno"
-	},
-	{
-		id: "estrada-reta",
-		nome: "Estrada reta",
-		camada: "caminho"
-	},
-	{
-		id: "estrada-curva",
-		nome: "Estrada em curva",
-		camada: "caminho"
-	},
-	{
-		id: "estrada-fechada",
-		nome: "Estrada em curva fechada",
-		camada: "caminho"
-	},
-	{
-		id: "estrada-fim",
-		nome: "Fim de estrada",
-		camada: "caminho"
-	},
-	{
-		id: "rio-reto",
-		nome: "Rio reto",
-		camada: "caminho"
-	},
-	{
-		id: "rio-curvo",
-		nome: "Rio em curva",
-		camada: "caminho"
-	},
-	{
-		id: "rio-fechado",
-		nome: "Rio em curva fechada",
-		camada: "caminho"
-	},
-	{
-		id: "rio-nascente",
-		nome: "Nascente",
-		camada: "caminho"
-	},
-	{
-		id: "vila",
-		nome: "Vila",
-		camada: "marco"
-	},
-	{
-		id: "cidade",
-		nome: "Cidade",
-		camada: "marco"
-	},
-	{
-		id: "castelo",
-		nome: "Castelo",
-		camada: "marco"
-	},
-	{
-		id: "torre",
-		nome: "Torre",
-		camada: "marco"
-	},
-	{
-		id: "templo",
-		nome: "Templo",
-		camada: "marco"
-	},
-	{
-		id: "ruina",
-		nome: "Ruína",
-		camada: "marco"
-	},
-	{
-		id: "caverna",
-		nome: "Caverna",
-		camada: "marco"
-	},
-	{
-		id: "covil",
-		nome: "Covil",
-		camada: "marco"
-	},
-	{
-		id: "acampamento",
-		nome: "Acampamento",
-		camada: "marco"
-	},
-	{
-		id: "ponte",
-		nome: "Ponte",
-		camada: "marco"
+		id: "tundra",
+		nome: "Tundra"
 	},
 	{
 		id: "marco",
+		nome: "Marcos"
+	}
+];
+var CREDITO_DA_ARTE = "Hexes: arte de C. Martins (CC BY 4.0)";
+/** [arquivo sem .png, nome] por bioma — os arquivos são os do pacote. */
+var DOS_BIOMAS = {
+	floresta: [
+		["forest_01_full", "Floresta densa"],
+		["forest_02_fewTrees", "Poucas árvores"],
+		["forest_03_clearing", "Clareira"],
+		["forest_04_dead", "Mata morta"],
+		["forest_06_wildBushes", "Mato"],
+		["forest_07_spikes", "Espinheiro"],
+		["forest_09_tree", "Árvore antiga"],
+		["forest_12_hill", "Colina"],
+		["forest_05_rift", "Fenda"],
+		["forest_18_blast", "Cratera"],
+		["forest_19_road", "Estrada"],
+		["forest_14_house", "Casa"],
+		["forest_15_village", "Vila"],
+		["forest_16_watchTower", "Torre de vigia"],
+		["forest_20_temple", "Templo"],
+		["forest_17_ruins", "Ruínas"],
+		["forest_11_cave", "Caverna"],
+		["forest_13_stones", "Pedras erguidas"],
+		["forest_10_mushroom", "Cogumelos"],
+		["forest_08_spider", "Teias"]
+	],
+	montanha: [
+		["mountain_01_full", "Cordilheira"],
+		["mountain_02_fewMount", "Serra baixa"],
+		["mountain_06_hills", "Morros"],
+		["mountain_12_forest", "Mata na serra"],
+		["mountain_09_peak", "Pico"],
+		["mountain_07_spikes", "Agulhas"],
+		["mountain_03_plateau", "Planalto"],
+		["mountain_04_vulcano", "Vulcão"],
+		["mountain_05_rift", "Desfiladeiro"],
+		["mountain_18_blast", "Cratera"],
+		["mountain_19_road", "Estrada"],
+		["mountain_10_bridge", "Ponte"],
+		["mountain_14_house", "Casa"],
+		["mountain_15_village", "Vila"],
+		["mountain_16_watchTower", "Torre de vigia"],
+		["mountain_08_gates", "Portões"],
+		["mountain_20_temple", "Templo"],
+		["mountain_17_ruins", "Ruínas"],
+		["mountain_11_cave", "Caverna"],
+		["mountain_13_obelisk", "Obelisco"]
+	],
+	deserto: [
+		["desert_01_full", "Dunas"],
+		["desert_02_fewSand", "Areal"],
+		["desert_07_dry", "Terra seca"],
+		["desert_06_cactus", "Cactos"],
+		["desert_12_hillsAndTrees", "Colinas"],
+		["desert_09_oasis", "Oásis"],
+		["desert_03_clearing", "Baixio"],
+		["desert_05_rift", "Fenda"],
+		["desert_10_hole", "Buraco"],
+		["desert_18_blast", "Cratera"],
+		["desert_19_road", "Estrada"],
+		["desert_14_house", "Casa"],
+		["desert_15_village", "Vila"],
+		["desert_16_watchTower", "Torre de vigia"],
+		["desert_20_temple", "Pirâmide"],
+		["desert_17_ruins", "Ruínas"],
+		["desert_11_cave", "Caverna"],
+		["desert_04_graveyard", "Cemitério"],
+		["desert_08_barrier", "Barreira"],
+		["desert_13_floatingIsland", "Ilha flutuante"]
+	],
+	tundra: [
+		["tundra_01_full", "Neve"],
+		["tundra_02_few", "Neve rala"],
+		["tundra_06_forest", "Pinheiral"],
+		["tundra_09_summit", "Cume"],
+		["tundra_04_snowStorm", "Nevasca"],
+		["tundra_07_shatteredLand", "Terra partida"],
+		["tundra_12_shards", "Cristais de gelo"],
+		["tundra_13_iceblock", "Bloco de gelo"],
+		["tundra_05_rift", "Fenda"],
+		["tundra_18_blast", "Cratera"],
+		["tundra_19_road", "Estrada"],
+		["tundra_10_iceBridge", "Ponte de gelo"],
+		["tundra_14_house", "Casa"],
+		["tundra_15_village", "Vila"],
+		["tundra_16_tower", "Torre"],
+		["tundra_20_temple", "Templo"],
+		["tundra_17_ruins", "Ruínas"],
+		["tundra_11_cave", "Caverna"],
+		["tundra_08_barrier", "Barreira"]
+	]
+};
+var PALETA = [
+	...DOS_BIOMAS.floresta.map(([a, nome]) => ({
+		id: `floresta/${a}`,
+		nome,
+		grupo: "floresta",
+		camada: "terreno"
+	})),
+	...[
+		["planicie", "Planície"],
+		["colinas", "Colinas"],
+		["plantacao", "Plantação"],
+		["pantano", "Pântano"],
+		["rio", "Rio"],
+		["lago", "Lago"],
+		["mar", "Mar"]
+	].map(([a, nome]) => ({
+		id: `campo/${a}`,
+		nome,
+		grupo: "campo",
+		camada: "terreno"
+	})),
+	...[
+		"montanha",
+		"deserto",
+		"tundra"
+	].flatMap((g) => DOS_BIOMAS[g].map(([a, nome]) => ({
+		id: `${g}/${a}`,
+		nome,
+		grupo: g,
+		camada: "terreno"
+	}))),
+	{
+		id: "marco",
 		nome: "Marco (X)",
+		grupo: "marco",
 		camada: "marco"
 	}
 ];
@@ -623,7 +627,7 @@ var ORDEM_DA_CAMADA = {
 };
 /** Caminho público da arte de uma peça (relativo ao site do hub). */
 function arteDaPeca(id) {
-	return `/mapa/pecas/${id}.svg`;
+	return `/mapa/pecas/${id}.${id.includes("/") ? "png" : "svg"}`;
 }
 /** Encaixa um ponto da cena no centro do hex mais próximo e devolve a chave
 *  ("x|y"). `ancora` é o centro de um hex qualquer da grade (gravado em
@@ -1107,11 +1111,6 @@ var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({
 	"\"": "&quot;",
 	"'": "&#39;"
 })[c]);
-var CAMADAS = [
-	["terreno", "Terreno"],
-	["caminho", "Caminhos"],
-	["marco", "Marcos"]
-];
 var CSS = `
 .wm-mesa .window-content { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
 .wm-mesa section { border: 1px solid var(--color-border-light-tertiary, #8884); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -1129,7 +1128,7 @@ var CSS = `
 `;
 var quemSou = null;
 var erro = "";
-var aba = "terreno";
+var aba = "floresta";
 var rot = 0;
 var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
 	static DEFAULT_OPTIONS = {
@@ -1215,7 +1214,7 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
 		if (!quemSou) return "";
 		const ligado = cfg("mapaLigado");
 		const f = ferramentaAtual();
-		const pecas = PALETA.filter((p) => p.camada === aba).map((p) => {
+		const pecas = PALETA.filter((p) => p.grupo === aba).map((p) => {
 			const on = f?.tipo === "peca" && f.id === p.id;
 			const giro = rot ? `style="transform: rotate(${rot}deg)"` : "";
 			return `<button type="button" class="peca ${on ? "on" : ""}" title="${esc(p.nome)}" data-peca="${esc(p.id)}"><img src="${esc(hub() + arteDaPeca(p.id))}" alt="" ${giro}></button>`;
@@ -1225,12 +1224,13 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
       <h3>Mapa da região</h3>
       <label class="linha"><input type="checkbox" name="mapaLigado" ${ligado ? "checked" : ""}> Ter o mapa da região neste mundo (é o mesmo de todos os mestres)</label>
       ${ligado ? `<div class="linha"><button type="button" data-acao="abrirCena" ${cenaDoMapa() ? "" : "disabled"}>Abrir a cena</button><button type="button" data-acao="atualizarMapa">Atualizar</button></div>
-      <div class="linha">${CAMADAS.map(([id, nome]) => `<button type="button" data-aba="${id}" class="${aba === id ? "on" : ""}">${nome}</button>`).join("")}</div>
+      <div class="linha">${GRUPOS.map(({ id, nome }) => `<button type="button" data-aba="${id}" class="${aba === id ? "on" : ""}">${nome}</button>`).join("")}</div>
       <div class="pecas">${pecas}</div>
       <div class="linha"><span class="muted">Girar</span><button type="button" data-girar="-60">⟲</button><button type="button" data-girar="60">⟳</button><span>${rot}°</span></div>
       <div class="linha"><input type="text" name="texto" maxlength="60" placeholder="Nome do lugar" value="${f?.tipo === "texto" ? esc(f.texto) : ""}"><button type="button" data-acao="texto" class="${f?.tipo === "texto" ? "on" : ""}">Rótulo</button></div>
       <div class="linha"><button type="button" data-acao="borracha" class="${f?.tipo === "borracha" ? "on" : ""}">Borracha</button><button type="button" data-acao="soltar" ${f ? "" : "disabled"}>Soltar</button></div>
-      <span class="muted">${dica}</span>` : ""}
+      <span class="muted">${dica}</span>
+      <span class="muted">${esc(CREDITO_DA_ARTE)}</span>` : ""}
     </section>`;
 	}
 	_onRender() {

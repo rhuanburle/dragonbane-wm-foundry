@@ -1,6 +1,6 @@
 // A janela do /wm: conectar a chave do mestre, escolher a missão e a paleta do
 // mapa. ApplicationV2 cru (sem Handlebars): existe do v12 ao v14 sem mudar.
-import { PALETA, arteDaPeca } from "../../../src/data/mapa/paleta";
+import { CREDITO_DA_ARTE, GRUPOS, PALETA, arteDaPeca } from "../../../src/data/mapa/paleta";
 import { MOD, avisar, cfg, gravarCfg, hub, mesa } from "./comum.js";
 import { sincronizarFichas, ultimaMesa } from "./fichas.js";
 import { cenaDoMapa, escolherFerramenta, ferramentaAtual, ligarMapa, sincronizarMapa } from "./mapa.js";
@@ -8,11 +8,6 @@ import { cenaDoMapa, escolherFerramenta, ferramentaAtual, ligarMapa, sincronizar
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-const CAMADAS = [
-  ["terreno", "Terreno"],
-  ["caminho", "Caminhos"],
-  ["marco", "Marcos"],
-];
 
 const CSS = `
 .wm-mesa .window-content { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
@@ -32,7 +27,7 @@ const CSS = `
 
 let quemSou = null;
 let erro = "";
-let aba = "terreno";
+let aba = "floresta";
 let rot = 0;
 
 export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
@@ -132,7 +127,7 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
     if (!quemSou) return "";
     const ligado = cfg("mapaLigado");
     const f = ferramentaAtual();
-    const pecas = PALETA.filter((p) => p.camada === aba)
+    const pecas = PALETA.filter((p) => p.grupo === aba)
       .map((p) => {
         const on = f?.tipo === "peca" && f.id === p.id;
         const giro = rot ? `style="transform: rotate(${rot}deg)"` : "";
@@ -150,12 +145,13 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
       ${
         ligado
           ? `<div class="linha"><button type="button" data-acao="abrirCena" ${cenaDoMapa() ? "" : "disabled"}>Abrir a cena</button><button type="button" data-acao="atualizarMapa">Atualizar</button></div>
-      <div class="linha">${CAMADAS.map(([id, nome]) => `<button type="button" data-aba="${id}" class="${aba === id ? "on" : ""}">${nome}</button>`).join("")}</div>
+      <div class="linha">${GRUPOS.map(({ id, nome }) => `<button type="button" data-aba="${id}" class="${aba === id ? "on" : ""}">${nome}</button>`).join("")}</div>
       <div class="pecas">${pecas}</div>
       <div class="linha"><span class="muted">Girar</span><button type="button" data-girar="-60">⟲</button><button type="button" data-girar="60">⟳</button><span>${rot}°</span></div>
       <div class="linha"><input type="text" name="texto" maxlength="60" placeholder="Nome do lugar" value="${f?.tipo === "texto" ? esc(f.texto) : ""}"><button type="button" data-acao="texto" class="${f?.tipo === "texto" ? "on" : ""}">Rótulo</button></div>
       <div class="linha"><button type="button" data-acao="borracha" class="${f?.tipo === "borracha" ? "on" : ""}">Borracha</button><button type="button" data-acao="soltar" ${f ? "" : "disabled"}>Soltar</button></div>
-      <span class="muted">${dica}</span>`
+      <span class="muted">${dica}</span>
+      <span class="muted">${esc(CREDITO_DA_ARTE)}</span>`
           : ""
       }
     </section>`;

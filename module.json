@@ -2,7 +2,7 @@
   "id": "dragonbane-wm-mesa",
   "title": "Dragonbane West Marches — Mesa",
   "description": "Mesa do West Marches no seu próprio Foundry: as fichas dos heróis vêm do hub (o hub é a ficha oficial; aqui é o espelho), PV e PD voltam para o hub, e o mapa da região é o mesmo de todos os mestres — o que você carimbar aqui vale lá. Digite /wm no chat para abrir.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "compatibility": {
     "minimum": "12",
     "verified": "14"
