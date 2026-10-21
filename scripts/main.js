@@ -1079,22 +1079,62 @@ async function clicou(ev) {
 		avisar("fora do mapa da região — ou o mapa ainda está carregando.", "warn");
 		return;
 	}
+	let tirar;
 	try {
 		if (f.tipo === "borracha") {
 			const alvo = carimboNoHex(hexKey);
 			if (!alvo) return;
+			tirar = marcarPendente(hexKey, true);
 			await mesa("apagarCarimbo", { id: alvo.id });
-		} else await mesa("carimbar", f.tipo === "peca" ? {
-			hexKey,
-			peca: f.id,
-			rot: f.rot
-		} : {
-			hexKey,
-			texto: f.texto
-		});
+		} else {
+			tirar = marcarPendente(hexKey, false);
+			await mesa("carimbar", f.tipo === "peca" ? {
+				hexKey,
+				peca: f.id,
+				rot: f.rot
+			} : {
+				hexKey,
+				texto: f.texto
+			});
+		}
 		await sincronizarMapa(true);
 	} catch (e) {
 		avisar(e.message || "não deu para carimbar.", "error");
+	} finally {
+		tirar?.();
+	}
+}
+/** Clique esperando o hub: um círculo pulsando no hex, só na tela de quem clicou
+*  (desenho solto no canvas, não vira documento), até a cena redesenhar.
+*  Devolve quem o tira. Se o PIXI desta versão do Foundry não colaborar, fica
+*  sem o círculo — nunca atrapalha o carimbo. */
+function marcarPendente(hexKey, apagando) {
+	try {
+		const [x, y] = hexKey.split("|").map(Number);
+		const camada = canvas?.controls ?? canvas?.interface;
+		if (!conv || !camada || !Number.isFinite(x) || !Number.isFinite(y)) return () => {};
+		const c = paraFoundry(conv, {
+			x,
+			y
+		});
+		const r = conv.grade.size * conv.k * .4;
+		const cor = apagando ? 14837322 : 13345370;
+		const g = new PIXI.Graphics();
+		g.lineStyle(Math.max(2, r / 6), cor, 1).beginFill(cor, .3).drawCircle(0, 0, r).endFill();
+		g.position.set(c.x, c.y);
+		camada.addChild(g);
+		let t = 0;
+		const pulso = () => {
+			t += canvas.app.ticker.deltaMS / 450;
+			g.alpha = .55 + .45 * Math.sin(t * Math.PI);
+		};
+		canvas.app.ticker.add(pulso);
+		return () => {
+			canvas.app?.ticker?.remove(pulso);
+			g.destroy();
+		};
+	} catch {
+		return () => {};
 	}
 }
 /** Liga o clique da paleta no palco do canvas (uma vez só: o palco sobrevive à
@@ -1224,7 +1264,7 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
 		}).join("");
 		return `<section>
       <h3>Missão</h3>
-      ${chamados.length ? `<div class="linha"><select name="callId"><option value="">— escolha —</option>${opcoes}</select><button type="button" data-acao="importar">Importar agora</button></div>` : `<span class="muted">Nenhuma missão confirmada sua no hub.</span>`}
+      ${chamados.length ? `<div class="linha"><select name="callId"><option value="">— escolha —</option>${opcoes}</select><button type="button" data-acao="importar">Importar agora</button></div>` : `<span class="muted">Nenhuma missão confirmada sua no hub. O mapa da região, abaixo, funciona mesmo assim.</span>`}
       ${callId ? herois ? `<ul>${herois}</ul>` : `<span class="muted">Buscando os heróis…</span>` : ""}
       <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 10 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub.</span>
     </section>`;

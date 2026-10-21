@@ -268,17 +268,53 @@ async function clicou(ev) {
     avisar("fora do mapa da região — ou o mapa ainda está carregando.", "warn");
     return;
   }
+  let tirar;
   try {
     if (f.tipo === "borracha") {
       const alvo = carimboNoHex(hexKey);
       if (!alvo) return;
+      tirar = marcarPendente(hexKey, true);
       await mesa("apagarCarimbo", { id: alvo.id });
     } else {
+      tirar = marcarPendente(hexKey, false);
       await mesa("carimbar", f.tipo === "peca" ? { hexKey, peca: f.id, rot: f.rot } : { hexKey, texto: f.texto });
     }
     await sincronizarMapa(true);
   } catch (e) {
     avisar(e.message || "não deu para carimbar.", "error");
+  } finally {
+    tirar?.();
+  }
+}
+
+/** Clique esperando o hub: um círculo pulsando no hex, só na tela de quem clicou
+ *  (desenho solto no canvas, não vira documento), até a cena redesenhar.
+ *  Devolve quem o tira. Se o PIXI desta versão do Foundry não colaborar, fica
+ *  sem o círculo — nunca atrapalha o carimbo. */
+function marcarPendente(hexKey, apagando) {
+  try {
+    const [x, y] = hexKey.split("|").map(Number);
+    const camada = canvas?.controls ?? canvas?.interface;
+    if (!conv || !camada || !Number.isFinite(x) || !Number.isFinite(y)) return () => {};
+    const c = paraFoundry(conv, { x, y });
+    const r = conv.grade.size * conv.k * 0.4;
+    const cor = apagando ? 0xe2664a : 0xcba25a;
+    const g = new PIXI.Graphics();
+    g.lineStyle(Math.max(2, r / 6), cor, 1).beginFill(cor, 0.3).drawCircle(0, 0, r).endFill();
+    g.position.set(c.x, c.y);
+    camada.addChild(g);
+    let t = 0;
+    const pulso = () => {
+      t += canvas.app.ticker.deltaMS / 450;
+      g.alpha = 0.55 + 0.45 * Math.sin(t * Math.PI);
+    };
+    canvas.app.ticker.add(pulso);
+    return () => {
+      canvas.app?.ticker?.remove(pulso);
+      g.destroy();
+    };
+  } catch {
+    return () => {};
   }
 }
 

@@ -116,7 +116,7 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
       ${
         chamados.length
           ? `<div class="linha"><select name="callId"><option value="">— escolha —</option>${opcoes}</select><button type="button" data-acao="importar">Importar agora</button></div>`
-          : `<span class="muted">Nenhuma missão confirmada sua no hub.</span>`
+          : `<span class="muted">Nenhuma missão confirmada sua no hub. O mapa da região, abaixo, funciona mesmo assim.</span>`
       }
       ${callId ? (herois ? `<ul>${herois}</ul>` : `<span class="muted">Buscando os heróis…</span>`) : ""}
       <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 10 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub.</span>
