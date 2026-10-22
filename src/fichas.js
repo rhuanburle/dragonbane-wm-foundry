@@ -6,7 +6,7 @@
 // DIFERENÇA ao hub — nunca o valor final, para um dano marcado no hub segundos
 // antes não ser apagado por um Foundry atrasado. O resto (inventário, perícias,
 // condições) se mexe no hub; aqui é sobrescrito na próxima versão.
-import { doSync, MOD, avisar, cfg, ehDoSync, imagemValida, mesa, souGmAtivo, umPorVez } from "./comum.js";
+import { doSync, MOD, avisar, cfg, ehDoSync, excluidos, imagemValida, marcarExcluido, mesa, souGmAtivo, umPorVez } from "./comum.js";
 
 const PASTA = "West Marches";
 const PHYS = ["weapon", "armor", "helmet", "item"];
@@ -276,8 +276,10 @@ export const sincronizarFichas = umPorVez(async () => {
   const antes = mexidas;
   const r = await mesa("fichas", { callId });
   ultimaMesa = r;
+  const fora = new Set(excluidos());
   for (const h of r.herois ?? []) {
-    if (!h.ficha) continue;
+    // Excluído pelo mestre nesta missão: não volta sozinho (a janela /wm traz de volta).
+    if (!h.ficha || fora.has(h.id)) continue;
     const ator = game.actors.find((a) => a.getFlag(MOD, "heroId") === h.id);
     if (ator && ator.getFlag(MOD, "versao") === h.versao) {
       if (conhecido.get(h.id)?.callId !== callId && livre(h.id, antes)) conhecer(h, callId);
@@ -292,6 +294,27 @@ export const sincronizarFichas = umPorVez(async () => {
   }
   Hooks.callAll(`${MOD}.mesa`, r);
 });
+
+/** O mestre excluiu o ator de um herói da mesa: sem isto o próximo ciclo (3 s)
+ *  o recriava. Fica excluído nesta missão até a janela /wm trazer de volta. */
+export function vigiarExclusoes() {
+  Hooks.on("deleteActor", (ator, options) => {
+    if (ehDoSync(options) || !souGmAtivo()) return;
+    const heroId = ator.getFlag(MOD, "heroId");
+    if (!heroId || !cfg("callId")) return;
+    conhecido.delete(heroId);
+    void marcarExcluido(heroId, true).then(() => {
+      avisar(`${ator.name} saiu da mesa e não volta nesta missão. Para trazer de volta, use a janela /wm.`);
+      Hooks.callAll(`${MOD}.mesa`, ultimaMesa);
+    });
+  });
+}
+
+/** Traz de volta um herói excluído: o próximo ciclo o importa de novo. */
+export async function trazerDeVolta(heroId) {
+  await marcarExcluido(heroId, false);
+  await sincronizarFichas();
+}
 
 /** PV/PD mexidos no Foundry → a diferença vai para o hub. */
 export function vigiarPvPd() {

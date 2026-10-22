@@ -20,6 +20,23 @@ export function registrarConfiguracoes() {
   });
   game.settings.register(MOD, "callId", { scope: "world", config: false, type: String, default: "" });
   game.settings.register(MOD, "mapaLigado", { scope: "world", config: false, type: Boolean, default: false });
+  // Heróis que o mestre excluiu da mesa: { callId, ids: [heroId] }. Vale só para
+  // a missão em que foram excluídos — trocar de missão começa a lista do zero.
+  game.settings.register(MOD, "excluidos", { scope: "world", config: false, type: Object, default: { callId: "", ids: [] } });
+}
+
+/** heroIds excluídos da missão escolhida agora. */
+export function excluidos() {
+  const e = cfg("excluidos") ?? {};
+  return e.callId === cfg("callId") && Array.isArray(e.ids) ? e.ids : [];
+}
+
+/** Marca (ou desmarca) um herói como excluído da missão escolhida. */
+export async function marcarExcluido(heroId, excluir) {
+  const ids = new Set(excluidos());
+  if (excluir) ids.add(heroId);
+  else ids.delete(heroId);
+  await gravarCfg("excluidos", { callId: cfg("callId"), ids: [...ids] });
 }
 
 export const cfg = (k) => game.settings.get(MOD, k);

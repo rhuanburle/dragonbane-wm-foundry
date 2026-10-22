@@ -6,7 +6,7 @@
 // Fonte em foundry/dragonbane-wm-mesa/src; `npm run build` empacota em
 // dist/foundry (module.json + module.zip) junto com o hub.
 import { MOD, cfg, registrarConfiguracoes, souGmAtivo } from "./comum.js";
-import { sincronizarFichas, vigiarPvPd } from "./fichas.js";
+import { sincronizarFichas, vigiarExclusoes, vigiarPvPd } from "./fichas.js";
 import { JanelaDaMesa } from "./janela.js";
 import { prepararCarimbo, sincronizarMapa, vigiarApagados } from "./mapa.js";
 
@@ -69,6 +69,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 Hooks.once("ready", () => {
   if (!game.user.isGM) return;
   vigiarPvPd();
+  vigiarExclusoes();
   vigiarApagados();
   prepararCarimbo();
   void ciclo("fichas");

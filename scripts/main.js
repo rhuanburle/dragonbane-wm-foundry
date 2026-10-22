@@ -28,6 +28,30 @@ function registrarConfiguracoes() {
 		type: Boolean,
 		default: false
 	});
+	game.settings.register(MOD, "excluidos", {
+		scope: "world",
+		config: false,
+		type: Object,
+		default: {
+			callId: "",
+			ids: []
+		}
+	});
+}
+/** heroIds excluídos da missão escolhida agora. */
+function excluidos() {
+	const e = cfg("excluidos") ?? {};
+	return e.callId === cfg("callId") && Array.isArray(e.ids) ? e.ids : [];
+}
+/** Marca (ou desmarca) um herói como excluído da missão escolhida. */
+async function marcarExcluido(heroId, excluir) {
+	const ids = new Set(excluidos());
+	if (excluir) ids.add(heroId);
+	else ids.delete(heroId);
+	await gravarCfg("excluidos", {
+		callId: cfg("callId"),
+		ids: [...ids]
+	});
 }
 var cfg = (k) => game.settings.get(MOD, k);
 var gravarCfg = (k, v) => game.settings.set(MOD, k, v);
@@ -397,8 +421,9 @@ var sincronizarFichas = umPorVez(async () => {
 	const antes = mexidas;
 	const r = await mesa("fichas", { callId });
 	ultimaMesa = r;
+	const fora = new Set(excluidos());
 	for (const h of r.herois ?? []) {
-		if (!h.ficha) continue;
+		if (!h.ficha || fora.has(h.id)) continue;
 		const ator = game.actors.find((a) => a.getFlag(MOD, "heroId") === h.id);
 		if (ator && ator.getFlag("dragonbane-wm-mesa", "versao") === h.versao) {
 			if (conhecido.get(h.id)?.callId !== callId && livre(h.id, antes)) conhecer(h, callId);
@@ -413,6 +438,25 @@ var sincronizarFichas = umPorVez(async () => {
 	}
 	Hooks.callAll(`${MOD}.mesa`, r);
 });
+/** O mestre excluiu o ator de um herói da mesa: sem isto o próximo ciclo (3 s)
+*  o recriava. Fica excluído nesta missão até a janela /wm trazer de volta. */
+function vigiarExclusoes() {
+	Hooks.on("deleteActor", (ator, options) => {
+		if (ehDoSync(options) || !souGmAtivo()) return;
+		const heroId = ator.getFlag(MOD, "heroId");
+		if (!heroId || !cfg("callId")) return;
+		conhecido.delete(heroId);
+		marcarExcluido(heroId, true).then(() => {
+			avisar(`${ator.name} saiu da mesa e não volta nesta missão. Para trazer de volta, use a janela /wm.`);
+			Hooks.callAll(`${MOD}.mesa`, ultimaMesa);
+		});
+	});
+}
+/** Traz de volta um herói excluído: o próximo ciclo o importa de novo. */
+async function trazerDeVolta(heroId) {
+	await marcarExcluido(heroId, false);
+	await sincronizarFichas();
+}
 /** PV/PD mexidos no Foundry → a diferença vai para o hub. */
 function vigiarPvPd() {
 	Hooks.on("updateActor", (ator, mudancas, options) => {
@@ -1268,7 +1312,10 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
 			const de = c.meu ? "" : " (de outro mestre)";
 			return `<option value="${esc(c.id)}" ${c.id === callId ? "selected" : ""}>${esc(c.titulo)} — ${esc(quando)}${de}</option>`;
 		}).join("");
-		const herois = ((ultimaMesa?.chamado?.id === callId ? ultimaMesa : null)?.herois ?? []).map((h) => {
+		const mesaAtual = ultimaMesa?.chamado?.id === callId ? ultimaMesa : null;
+		const fora = new Set(excluidos());
+		const herois = (mesaAtual?.herois ?? []).map((h) => {
+			if (fora.has(h.id)) return `<li class="muted">${esc(h.nome)} — excluído desta mesa <button type="button" data-voltar="${esc(h.id)}">trazer de volta</button></li>`;
 			const f = h.ficha;
 			const pv = f ? ` — PV ${f.hp?.value ?? "?"}/${f.hp?.max ?? "?"} · PD ${f.wp?.value ?? "?"}/${f.wp?.max ?? "?"}` : " — sem ficha";
 			const nota = !h.fichaNoHub ? " (ficha ainda no Foundry antigo: PV/PD não voltam)" : h.estado !== "alive" ? " (caído)" : "";
@@ -1278,7 +1325,7 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
       <h3>Missão</h3>
       ${chamados.length ? `<div class="linha"><select name="callId"><option value="">— escolha —</option>${opcoes}</select><button type="button" data-acao="importar">Importar agora</button></div>` : `<span class="muted">Nenhuma missão confirmada sua no hub. O mapa da região, abaixo, funciona mesmo assim.</span>`}
       ${callId ? herois ? `<ul>${herois}</ul>` : `<span class="muted">Buscando os heróis…</span>` : ""}
-      <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 10 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub.</span>
+      <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 3 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub. Excluir o ator tira o herói desta mesa até você trazê-lo de volta.</span>
     </section>`;
 	}
 	#mapa() {
@@ -1313,6 +1360,7 @@ var JanelaDaMesa = class JanelaDaMesa extends foundry.applications.api.Applicati
 			this.render();
 			sincronizarFichas().catch((err) => avisar(err.message, "error"));
 		});
+		for (const b of el.querySelectorAll("[data-voltar]")) b.addEventListener("click", () => trazerDeVolta(b.dataset.voltar).then(() => this.render()).catch((err) => avisar(err.message, "error")));
 		el.querySelector("[data-acao=\"importar\"]")?.addEventListener("click", () => sincronizarFichas().then(() => avisar("heróis atualizados.")).catch((err) => avisar(err.message, "error")));
 		el.querySelector("[name=\"mapaLigado\"]")?.addEventListener("change", (e) => ligarMapa(e.target.checked).catch((err) => avisar(err.message, "error")).finally(() => this.render()));
 		el.querySelector("[data-acao=\"abrirCena\"]")?.addEventListener("click", () => void cenaDoMapa()?.view());
@@ -1405,6 +1453,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 Hooks.once("ready", () => {
 	if (!game.user.isGM) return;
 	vigiarPvPd();
+	vigiarExclusoes();
 	vigiarApagados();
 	prepararCarimbo();
 	ciclo("fichas");

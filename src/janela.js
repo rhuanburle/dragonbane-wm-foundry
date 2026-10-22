@@ -1,8 +1,8 @@
 // A janela do /wm: conectar a chave do mestre, escolher a missão e a paleta do
 // mapa. ApplicationV2 cru (sem Handlebars): existe do v12 ao v14 sem mudar.
 import { CREDITO_DA_ARTE, GRUPOS, PALETA, arteDaPeca } from "../../../src/data/mapa/paleta";
-import { MOD, avisar, cfg, gravarCfg, hub, mesa } from "./comum.js";
-import { sincronizarFichas, ultimaMesa } from "./fichas.js";
+import { MOD, avisar, cfg, excluidos, gravarCfg, hub, mesa } from "./comum.js";
+import { sincronizarFichas, trazerDeVolta, ultimaMesa } from "./fichas.js";
 import { cenaDoMapa, escolherFerramenta, ferramentaAtual, ligarMapa, sincronizarMapa } from "./mapa.js";
 
 const esc = (s) =>
@@ -103,8 +103,11 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
       })
       .join("");
     const mesaAtual = ultimaMesa?.chamado?.id === callId ? ultimaMesa : null;
+    const fora = new Set(excluidos());
     const herois = (mesaAtual?.herois ?? [])
       .map((h) => {
+        if (fora.has(h.id))
+          return `<li class="muted">${esc(h.nome)} — excluído desta mesa <button type="button" data-voltar="${esc(h.id)}">trazer de volta</button></li>`;
         const f = h.ficha;
         const pv = f ? ` — PV ${f.hp?.value ?? "?"}/${f.hp?.max ?? "?"} · PD ${f.wp?.value ?? "?"}/${f.wp?.max ?? "?"}` : " — sem ficha";
         const nota = !h.fichaNoHub ? " (ficha ainda no Foundry antigo: PV/PD não voltam)" : h.estado !== "alive" ? " (caído)" : "";
@@ -119,7 +122,7 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
           : `<span class="muted">Nenhuma missão confirmada sua no hub. O mapa da região, abaixo, funciona mesmo assim.</span>`
       }
       ${callId ? (herois ? `<ul>${herois}</ul>` : `<span class="muted">Buscando os heróis…</span>`) : ""}
-      <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 10 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub.</span>
+      <span class="muted">Os heróis entram na pasta "West Marches" e se atualizam sozinhos a cada 3 s. PV e PD mexidos aqui voltam para o hub; o resto se mexe na ficha do hub. Excluir o ator tira o herói desta mesa até você trazê-lo de volta.</span>
     </section>`;
   }
 
@@ -166,6 +169,12 @@ export class JanelaDaMesa extends foundry.applications.api.ApplicationV2 {
       this.render();
       void sincronizarFichas().catch((err) => avisar(err.message, "error"));
     });
+    for (const b of el.querySelectorAll("[data-voltar]"))
+      b.addEventListener("click", () =>
+        trazerDeVolta(b.dataset.voltar)
+          .then(() => this.render())
+          .catch((err) => avisar(err.message, "error")),
+      );
     el.querySelector('[data-acao="importar"]')?.addEventListener("click", () =>
       sincronizarFichas()
         .then(() => avisar("heróis atualizados."))
