@@ -55,7 +55,7 @@ A chave fica guardada **só neste navegador**, nunca no mundo, que os jogadores 
 1. Na janela do `/wm`, escolha a **missão** da sessão.
 2. Em alguns segundos os heróis confirmados aparecem na pasta **"West Marches"** da aba Atores, com a ficha completa: idade, atributos, PV, PD, perícias, habilidades, magias, equipamento, dinheiro e condições.
 3. Excluir o ator de um herói tira ele **desta missão** (não volta sozinho); a janela do `/wm` lista os excluídos com **trazer de volta**.
-3. **Dê a posse do ator ao jogador** (clique direito no ator → Configurar posse) se ele for mexer no próprio token.
+4. **Dê a posse do ator ao jogador** (clique direito no ator → Configurar posse) se ele for mexer no próprio token.
 4. Jogue normalmente. Os testes rolam no Foundry, como sempre.
 
 ### O que vai e o que volta
