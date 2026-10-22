@@ -6,7 +6,7 @@
 // DIFERENÇA ao hub — nunca o valor final, para um dano marcado no hub segundos
 // antes não ser apagado por um Foundry atrasado. O resto (inventário, perícias,
 // condições) se mexe no hub; aqui é sobrescrito na próxima versão.
-import { DO_SYNC, MOD, avisar, cfg, ehDoSync, imagemValida, mesa, souGmAtivo, umPorVez } from "./comum.js";
+import { doSync, MOD, avisar, cfg, ehDoSync, imagemValida, mesa, souGmAtivo, umPorVez } from "./comum.js";
 
 const PASTA = "West Marches";
 const PHYS = ["weapon", "armor", "helmet", "item"];
@@ -14,6 +14,9 @@ const PHYS = ["weapon", "armor", "helmet", "item"];
 const ATRIBUTO = { FOR: "str", CON: "con", AGI: "agl", AGL: "agl", INT: "int", VON: "wil", CAR: "cha" };
 /** As seis condições do livro (p.51), na ordem dos atributos do sistema. */
 const CONDICAO = { Exausto: "str", Adoecido: "con", Aturdido: "agl", Enraivecido: "int", Assustado: "wil", Desanimado: "cha" };
+/** `system.age` do sistema. Ficha do hub sem idade fica de fora (o ator segue como está). */
+const IDADES = new Set(["young", "adult", "old"]);
+const idade = (f) => (IDADES.has(f.age) ? f.age : undefined);
 
 /** heroId → { pv, pd, versao, callId, editavel } como o hub tem agora. PV/PD são
  *  a base da diferença que volta; `editavel` é se o hub aceita PV/PD (vivo e com
@@ -107,6 +110,10 @@ function camposDoSistema(ator, f) {
     "system.currency.gc": f.money?.gold ?? 0,
     "system.currency.sc": f.money?.silver ?? 0,
     "system.currency.cc": f.money?.copper ?? 0,
+    // Os atributos do hub já trazem o modificador de idade. Gravar a idade pelo
+    // update não reaplica nada (quem soma a diferença é a edição na ficha, o
+    // _onAgeEdit do sistema), e os atributos são regravados logo abaixo.
+    "system.age": idade(f),
   };
   for (const [rotulo, v] of Object.entries(f.attributes ?? {})) {
     const k = ATRIBUTO[rotulo];
@@ -196,9 +203,9 @@ async function acertarItens(ator, f, criando) {
   }
   for (const sobra of noAtor.values()) apagar.push(...sobra.map((it) => it.id));
 
-  if (apagar.length) await ator.deleteEmbeddedDocuments("Item", apagar, DO_SYNC);
-  if (mudar.length) await ator.updateEmbeddedDocuments("Item", mudar, DO_SYNC);
-  if (criar.length) await ator.createEmbeddedDocuments("Item", criar, DO_SYNC);
+  if (apagar.length) await ator.deleteEmbeddedDocuments("Item", apagar, doSync());
+  if (mudar.length) await ator.updateEmbeddedDocuments("Item", mudar, doSync());
+  if (criar.length) await ator.createEmbeddedDocuments("Item", criar, doSync());
   return faltou;
 }
 
@@ -223,10 +230,12 @@ async function importar(h, ator, callId, antes) {
         type: "character",
         folder: (await pasta()).id,
         ...(img ? { img } : {}),
+        // Nasce com a idade certa: o default do sistema é 'adult'.
+        ...(idade(f) ? { system: { age: idade(f) } } : {}),
         prototypeToken: { name: h.nome, actorLink: true, ...(img ? { texture: { src: img } } : {}) },
         flags: { [MOD]: { heroId: h.id } },
       },
-      DO_SYNC,
+      doSync(),
     );
   }
   const faltou = await acertarItens(ator, f, criando);
@@ -252,10 +261,10 @@ async function importar(h, ator, callId, antes) {
   const dados = { ...sistema, [`flags.${MOD}.versao`]: comPvPd ? h.versao : null };
   if (ator.name !== h.nome) dados.name = h.nome;
   if (img && ator.img !== img) Object.assign(dados, { img, "prototypeToken.texture.src": img });
-  await ator.update(dados, DO_SYNC);
+  await ator.update(dados, doSync());
   // mexeu enquanto gravávamos: o valor do hub já é velho, reimporta no próximo ciclo
   if (comPvPd && livre(h.id, antes)) conhecer(h, callId);
-  else if (comPvPd) await ator.update({ [`flags.${MOD}.versao`]: null }, DO_SYNC);
+  else if (comPvPd) await ator.update({ [`flags.${MOD}.versao`]: null }, doSync());
   if (criando) avisar(`${h.nome} chegou do hub (pasta "${PASTA}"). Dê a posse ao jogador se ele for mexer no token.`);
   if (faltou.length) avisar(`${h.nome}: não achei ${faltou.join(", ")} neste mundo — o resto entrou.`, "warn");
 }
@@ -301,7 +310,7 @@ export function vigiarPvPd() {
     if (!base.editavel) {
       // Caído ou com a ficha ainda no Foundry antigo: o hub não aceita. Volta o
       // ator ao valor do hub em vez de deixar um PV que não existe lá.
-      void ator.update({ "system.hitPoints.value": base.pv, "system.willPoints.value": base.pd }, DO_SYNC);
+      void ator.update({ "system.hitPoints.value": base.pv, "system.willPoints.value": base.pd }, doSync());
       avisar(`${ator.name}: PV/PD deste herói não mudam pela mesa (caído, ou ficha ainda no Foundry antigo). Ajuste no hub.`, "warn");
       return;
     }
@@ -332,12 +341,12 @@ async function mandarPvPd(ator, heroId, callId, corpo) {
     const acerto = { [`flags.${MOD}.versao`]: r.versao ?? null };
     if (ator.system.hitPoints.value !== r.hp.value) acerto["system.hitPoints.value"] = r.hp.value;
     if (ator.system.willPoints.value !== r.wp.value) acerto["system.willPoints.value"] = r.wp.value;
-    await ator.update(acerto, DO_SYNC);
+    await ator.update(acerto, doSync());
   } catch (e) {
     // Não chegou: esquece a versão para o próximo ciclo trazer o valor do hub de
     // volta (o Foundry não fica mostrando um PV que o hub não tem).
     conhecido.delete(heroId);
-    await ator.update({ [`flags.${MOD}.versao`]: null }, DO_SYNC).catch(() => undefined);
+    await ator.update({ [`flags.${MOD}.versao`]: null }, doSync()).catch(() => undefined);
     avisar(`PV/PD de ${ator.name} não foram para o hub: ${e.message}`, "warn");
   } finally {
     pendentes.set(heroId, Math.max(0, (pendentes.get(heroId) ?? 1) - 1));

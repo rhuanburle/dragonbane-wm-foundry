@@ -27,8 +27,11 @@ export const gravarCfg = (k, v) => game.settings.set(MOD, k, v);
 
 export const hub = () => String(cfg("hub") || HUB_PADRAO).replace(/\/+$/, "");
 
-/** Opções de escrita que marcam "fomos nós" — os hooks ignoram para não fazer eco. */
-export const DO_SYNC = { [MOD]: { sync: true } };
+/** Opções de escrita que marcam "fomos nós" — os hooks ignoram para não fazer eco.
+ *  Um objeto NOVO a cada escrita: o Foundry 14 grava `parent` e companhia dentro
+ *  das opções, e um objeto reaproveitado levava o pai de um item para a escrita
+ *  seguinte do ator ("Actor is not a valid embedded Document within the Actor"). */
+export const doSync = () => ({ [MOD]: { sync: true } });
 export const ehDoSync = (options) => options?.[MOD]?.sync === true;
 
 /** Só o mestre ativo fala com o hub: com dois mestres logados no mesmo mundo,

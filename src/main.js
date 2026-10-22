@@ -10,32 +10,60 @@ import { sincronizarFichas, vigiarPvPd } from "./fichas.js";
 import { JanelaDaMesa } from "./janela.js";
 import { prepararCarimbo, sincronizarMapa, vigiarApagados } from "./mapa.js";
 
-const CICLO_MS = 10_000;
+// Fichas a cada 3 s: é por aqui que o PV mexido no hub (ou noutro VTT) chega no
+// ator. O mapa muda pouco e custa mais: 10 s.
+const FICHAS_MS = 3_000;
+const MAPA_MS = 10_000;
 
 /** Uma volta do laço: falha de rede não para o laço (o próximo ciclo tenta de
- *  novo) e não vira aviso na tela a cada 10 s — o erro fica no console. */
-let ultimoErro = "";
-async function ciclo() {
+ *  novo) e não vira aviso na tela a cada volta — o erro fica no console. */
+const ultimoErro = {};
+async function ciclo(nome) {
   if (!game.user.isGM || !cfg("chave")) return;
   // fichas só no mestre ativo; o mapa todo mestre busca (só o ativo escreve)
-  for (const [nome, fn] of [
-    ["fichas", souGmAtivo() ? sincronizarFichas : null],
-    ["mapa", sincronizarMapa],
-  ]) {
-    if (!fn) continue;
-    try {
-      await fn();
-    } catch (e) {
-      const msg = `${nome}: ${e.message}`;
-      if (msg !== ultimoErro) console.warn(`${MOD} | ${msg}`);
-      ultimoErro = msg;
-    }
+  const fn = nome === "fichas" ? (souGmAtivo() ? sincronizarFichas : null) : sincronizarMapa;
+  if (!fn) return;
+  try {
+    await fn();
+    ultimoErro[nome] = "";
+  } catch (e) {
+    if (e.message !== ultimoErro[nome]) console.warn(`${MOD} | ${nome}: ${e.message}`);
+    ultimoErro[nome] = e.message;
   }
 }
 
 Hooks.once("init", () => {
   registrarConfiguracoes();
   game.modules.get(MOD).api = { abrir: () => JanelaDaMesa.abrir() };
+  // Atalho para reabrir a janela depois de fechada (dá para trocar em Configurar Atalhos).
+  game.keybindings.register(MOD, "abrir", {
+    name: "Abrir a mesa do West Marches",
+    editable: [{ key: "KeyM", modifiers: ["Shift"] }],
+    restricted: true,
+    onDown: () => {
+      JanelaDaMesa.abrir();
+      return true;
+    },
+  });
+});
+
+// Botão na barra da esquerda, no grupo dos Tokens: abre a janela (heróis e as
+// peças do mapa para carimbar). Do v13 em diante grupos e ferramentas são
+// objetos e o botão usa onChange; até o v12 são listas e usa onClick.
+Hooks.on("getSceneControlButtons", (controls) => {
+  if (!game.user.isGM) return;
+  const tool = {
+    name: "wm-mesa",
+    title: "West Marches — Mesa (Shift+M)",
+    icon: "fas fa-dragon",
+    button: true,
+    visible: true,
+    order: 99,
+    onChange: () => JanelaDaMesa.abrir(),
+    onClick: () => JanelaDaMesa.abrir(),
+  };
+  if (Array.isArray(controls)) controls.find((c) => c.name === "token")?.tools.push(tool);
+  else if (controls.tokens) controls.tokens.tools[tool.name] = tool;
 });
 
 Hooks.once("ready", () => {
@@ -43,13 +71,17 @@ Hooks.once("ready", () => {
   vigiarPvPd();
   vigiarApagados();
   prepararCarimbo();
-  void ciclo();
-  setInterval(() => void ciclo(), CICLO_MS);
+  void ciclo("fichas");
+  void ciclo("mapa");
+  setInterval(() => void ciclo("fichas"), FICHAS_MS);
+  setInterval(() => void ciclo("mapa"), MAPA_MS);
 });
 
-// /wm no chat abre a janela (e não vira mensagem).
+// /wm no chat abre a janela (e não vira mensagem). Do v14 em diante o chat é um
+// editor rico e a mensagem chega como HTML ("<p>/wm</p>"), daí tirar as tags.
 Hooks.on("chatMessage", (_log, mensagem) => {
-  if (!/^\/wm\b/i.test(String(mensagem).trim())) return;
+  const texto = String(mensagem).replace(/<[^>]*>/g, "").trim();
+  if (!/^\/wm\b/i.test(texto)) return;
   JanelaDaMesa.abrir();
   return false;
 });

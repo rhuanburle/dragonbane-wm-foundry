@@ -5,7 +5,7 @@
 // vão para o hub e valem para todos os mestres e VTTs.
 import { hexGeom } from "../../../src/lib/hexgrid";
 import { ORDEM_DA_CAMADA, encaixarNoHex } from "../../../src/data/mapa/paleta";
-import { DO_SYNC, MOD, avisar, cfg, ehDoSync, gravarCfg, mesa, souGmAtivo, umPorVez } from "./comum.js";
+import { doSync, MOD, avisar, cfg, ehDoSync, gravarCfg, mesa, souGmAtivo, umPorVez } from "./comum.js";
 
 const NOME_DA_CENA = "Mapa da região (West Marches)";
 /** Tamanho do hex na cena do Foundry. O do hub é 42 (a cena "Ermos" original):
@@ -142,7 +142,7 @@ async function criarCena(hubCena) {
       tokenVision: false,
       flags: { [MOD]: { mapa: true } },
     },
-    DO_SYNC,
+    doSync(),
   );
 }
 
@@ -195,8 +195,8 @@ export const sincronizarMapa = umPorVez(async (forcar) => {
   const entrar = { Tile: [], Drawing: [] };
   for (const [id, d] of quero) if (!tem.has(id)) entrar[d.tipo].push(d.dados());
   for (const tipo of ["Tile", "Drawing"]) {
-    if (sair[tipo].length) await cena.deleteEmbeddedDocuments(tipo, sair[tipo], DO_SYNC);
-    if (entrar[tipo].length) await cena.createEmbeddedDocuments(tipo, entrar[tipo], DO_SYNC);
+    if (sair[tipo].length) await cena.deleteEmbeddedDocuments(tipo, sair[tipo], doSync());
+    if (entrar[tipo].length) await cena.createEmbeddedDocuments(tipo, entrar[tipo], doSync());
   }
   desenhados = new Set(quero.keys());
 });

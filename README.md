@@ -43,7 +43,7 @@ Quando sair uma versão nova, o Foundry oferece a atualização na lista de mód
 
 1. No hub, abra o **Perfil** e procure o cartão **"Sua mesa no VTT"**.
 2. Clique para **gerar a chave**. Ela aparece **uma vez só**; copie na hora. Se perder, gere outra (a antiga deixa de valer).
-3. No Foundry, digite **`/wm`** no chat, ou clique no botão **West Marches** no topo da aba **Atores**.
+3. No Foundry, digite **`/wm`** no chat, aperte **Shift+M**, clique no **dragão** na barra da esquerda (grupo dos Tokens) ou no botão **West Marches** no topo da aba **Atores**.
 4. Cole a chave e clique em **Conectar**. Deve aparecer "Conectado como *seu nome*".
 
 A chave fica guardada **só neste navegador**, nunca no mundo, que os jogadores também leem. Em outro computador, cole de novo.
@@ -53,7 +53,7 @@ A chave fica guardada **só neste navegador**, nunca no mundo, que os jogadores 
 ## Jogar uma missão
 
 1. Na janela do `/wm`, escolha a **missão** da sessão.
-2. Em alguns segundos os heróis confirmados aparecem na pasta **"West Marches"** da aba Atores, com a ficha completa: atributos, PV, PD, perícias, habilidades, magias, equipamento, dinheiro e condições.
+2. Em alguns segundos os heróis confirmados aparecem na pasta **"West Marches"** da aba Atores, com a ficha completa: idade, atributos, PV, PD, perícias, habilidades, magias, equipamento, dinheiro e condições.
 3. **Dê a posse do ator ao jogador** (clique direito no ator → Configurar posse) se ele for mexer no próprio token.
 4. Jogue normalmente. Os testes rolam no Foundry, como sempre.
 
@@ -62,7 +62,7 @@ A chave fica guardada **só neste navegador**, nunca no mundo, que os jogadores 
 | Mudou… | Onde vale |
 |---|---|
 | PV ou PD no Foundry (token ou ficha) | Vai para o hub na hora. |
-| Qualquer coisa na ficha do hub (PV, PD, condições, itens, dinheiro, perícias) | Chega ao Foundry em até 10 segundos. |
+| Qualquer coisa na ficha do hub (PV, PD, condições, itens, dinheiro, perícias) | Chega ao Foundry em poucos segundos. |
 | Itens, condições, dinheiro ou perícias **no Foundry** | **Não volta.** É sobrescrito na próxima atualização do hub. |
 
 Por isso a regra da mesa é: **mexa na ficha pelo hub**. A ficha do hub fica aberta durante o jogo (o jogador marca condições, consome itens, equipa). O Foundry é o lugar da rolagem e do token.

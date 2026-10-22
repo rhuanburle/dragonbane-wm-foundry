@@ -32,8 +32,11 @@ function registrarConfiguracoes() {
 var cfg = (k) => game.settings.get(MOD, k);
 var gravarCfg = (k, v) => game.settings.set(MOD, k, v);
 var hub = () => String(cfg("hub") || "https://dragonbane-west-marches.web.app").replace(/\/+$/, "");
-/** Opções de escrita que marcam "fomos nós" — os hooks ignoram para não fazer eco. */
-var DO_SYNC = { [MOD]: { sync: true } };
+/** Opções de escrita que marcam "fomos nós" — os hooks ignoram para não fazer eco.
+*  Um objeto NOVO a cada escrita: o Foundry 14 grava `parent` e companhia dentro
+*  das opções, e um objeto reaproveitado levava o pai de um item para a escrita
+*  seguinte do ator ("Actor is not a valid embedded Document within the Actor"). */
+var doSync = () => ({ [MOD]: { sync: true } });
 var ehDoSync = (options) => options?.[MOD]?.sync === true;
 /** Só o mestre ativo fala com o hub: com dois mestres logados no mesmo mundo,
 *  os dois criariam o mesmo ator e mandariam o mesmo dano duas vezes. */
@@ -123,6 +126,13 @@ var CONDICAO = {
 	Assustado: "wil",
 	Desanimado: "cha"
 };
+/** `system.age` do sistema. Ficha do hub sem idade fica de fora (o ator segue como está). */
+var IDADES = /* @__PURE__ */ new Set([
+	"young",
+	"adult",
+	"old"
+]);
+var idade = (f) => IDADES.has(f.age) ? f.age : void 0;
 /** heroId → { pv, pd, versao, callId, editavel } como o hub tem agora. PV/PD são
 *  a base da diferença que volta; `editavel` é se o hub aceita PV/PD (vivo e com
 *  a ficha no hub); `callId` é a missão de onde veio (herói de outra missão não manda). */
@@ -207,7 +217,8 @@ function camposDoSistema(ator, f) {
 		"system.willPoints.value": f.wp?.value,
 		"system.currency.gc": f.money?.gold ?? 0,
 		"system.currency.sc": f.money?.silver ?? 0,
-		"system.currency.cc": f.money?.copper ?? 0
+		"system.currency.cc": f.money?.copper ?? 0,
+		"system.age": idade(f)
 	};
 	for (const [rotulo, v] of Object.entries(f.attributes ?? {})) {
 		const k = ATRIBUTO[rotulo];
@@ -315,9 +326,9 @@ async function acertarItens(ator, f, criando) {
 		criar.push(obj);
 	}
 	for (const sobra of noAtor.values()) apagar.push(...sobra.map((it) => it.id));
-	if (apagar.length) await ator.deleteEmbeddedDocuments("Item", apagar, DO_SYNC);
-	if (mudar.length) await ator.updateEmbeddedDocuments("Item", mudar, DO_SYNC);
-	if (criar.length) await ator.createEmbeddedDocuments("Item", criar, DO_SYNC);
+	if (apagar.length) await ator.deleteEmbeddedDocuments("Item", apagar, doSync());
+	if (mudar.length) await ator.updateEmbeddedDocuments("Item", mudar, doSync());
+	if (criar.length) await ator.createEmbeddedDocuments("Item", criar, doSync());
 	return faltou;
 }
 async function pasta() {
@@ -340,13 +351,14 @@ async function importar(h, ator, callId, antes) {
 		type: "character",
 		folder: (await pasta()).id,
 		...img ? { img } : {},
+		...idade(f) ? { system: { age: idade(f) } } : {},
 		prototypeToken: {
 			name: h.nome,
 			actorLink: true,
 			...img ? { texture: { src: img } } : {}
 		},
 		flags: { [MOD]: { heroId: h.id } }
-	}, DO_SYNC);
+	}, doSync());
 	const faltou = await acertarItens(ator, f, criando);
 	if (criando) {
 		try {
@@ -372,9 +384,9 @@ async function importar(h, ator, callId, antes) {
 		img,
 		"prototypeToken.texture.src": img
 	});
-	await ator.update(dados, DO_SYNC);
+	await ator.update(dados, doSync());
 	if (comPvPd && livre(h.id, antes)) conhecer(h, callId);
-	else if (comPvPd) await ator.update({ [`flags.${MOD}.versao`]: null }, DO_SYNC);
+	else if (comPvPd) await ator.update({ [`flags.${MOD}.versao`]: null }, doSync());
 	if (criando) avisar(`${h.nome} chegou do hub (pasta "${PASTA}"). Dê a posse ao jogador se ele for mexer no token.`);
 	if (faltou.length) avisar(`${h.nome}: não achei ${faltou.join(", ")} neste mundo — o resto entrou.`, "warn");
 }
@@ -418,7 +430,7 @@ function vigiarPvPd() {
 			ator.update({
 				"system.hitPoints.value": base.pv,
 				"system.willPoints.value": base.pd
-			}, DO_SYNC);
+			}, doSync());
 			avisar(`${ator.name}: PV/PD deste herói não mudam pela mesa (caído, ou ficha ainda no Foundry antigo). Ajuste no hub.`, "warn");
 			return;
 		}
@@ -450,10 +462,10 @@ async function mandarPvPd(ator, heroId, callId, corpo) {
 		const acerto = { [`flags.${MOD}.versao`]: r.versao ?? null };
 		if (ator.system.hitPoints.value !== r.hp.value) acerto["system.hitPoints.value"] = r.hp.value;
 		if (ator.system.willPoints.value !== r.wp.value) acerto["system.willPoints.value"] = r.wp.value;
-		await ator.update(acerto, DO_SYNC);
+		await ator.update(acerto, doSync());
 	} catch (e) {
 		conhecido.delete(heroId);
-		await ator.update({ [`flags.${MOD}.versao`]: null }, DO_SYNC).catch(() => void 0);
+		await ator.update({ [`flags.${MOD}.versao`]: null }, doSync()).catch(() => void 0);
 		avisar(`PV/PD de ${ator.name} não foram para o hub: ${e.message}`, "warn");
 	} finally {
 		pendentes.set(heroId, Math.max(0, (pendentes.get(heroId) ?? 1) - 1));
@@ -967,7 +979,7 @@ async function criarCena(hubCena) {
 		},
 		tokenVision: false,
 		flags: { [MOD]: { mapa: true } }
-	}, DO_SYNC);
+	}, doSync());
 }
 /** Algo que a sincronização desenhou sumiu da cena (o mestre apagou o fundo, ou
 *  uma limpeza em massa que o hub ignorou): a versão do hub não muda por isso,
@@ -1020,8 +1032,8 @@ var sincronizarMapa = umPorVez(async (forcar) => {
 	};
 	for (const [id, d] of quero) if (!tem.has(id)) entrar[d.tipo].push(d.dados());
 	for (const tipo of ["Tile", "Drawing"]) {
-		if (sair[tipo].length) await cena.deleteEmbeddedDocuments(tipo, sair[tipo], DO_SYNC);
-		if (entrar[tipo].length) await cena.createEmbeddedDocuments(tipo, entrar[tipo], DO_SYNC);
+		if (sair[tipo].length) await cena.deleteEmbeddedDocuments(tipo, sair[tipo], doSync());
+		if (entrar[tipo].length) await cena.createEmbeddedDocuments(tipo, entrar[tipo], doSync());
 	}
 	desenhados = new Set(quero.keys());
 });
@@ -1342,37 +1354,67 @@ Hooks.on(`${MOD}.mesa`, () => JanelaDaMesa.redesenhar());
 Hooks.on(`${MOD}.ferramenta`, () => JanelaDaMesa.redesenhar());
 //#endregion
 //#region foundry/dragonbane-wm-mesa/src/main.js
-var CICLO_MS = 1e4;
+var FICHAS_MS = 3e3;
+var MAPA_MS = 1e4;
 /** Uma volta do laço: falha de rede não para o laço (o próximo ciclo tenta de
-*  novo) e não vira aviso na tela a cada 10 s — o erro fica no console. */
-var ultimoErro = "";
-async function ciclo() {
+*  novo) e não vira aviso na tela a cada volta — o erro fica no console. */
+var ultimoErro = {};
+async function ciclo(nome) {
 	if (!game.user.isGM || !cfg("chave")) return;
-	for (const [nome, fn] of [["fichas", souGmAtivo() ? sincronizarFichas : null], ["mapa", sincronizarMapa]]) {
-		if (!fn) continue;
-		try {
-			await fn();
-		} catch (e) {
-			const msg = `${nome}: ${e.message}`;
-			if (msg !== ultimoErro) console.warn(`${MOD} | ${msg}`);
-			ultimoErro = msg;
-		}
+	const fn = nome === "fichas" ? souGmAtivo() ? sincronizarFichas : null : sincronizarMapa;
+	if (!fn) return;
+	try {
+		await fn();
+		ultimoErro[nome] = "";
+	} catch (e) {
+		if (e.message !== ultimoErro[nome]) console.warn(`${MOD} | ${nome}: ${e.message}`);
+		ultimoErro[nome] = e.message;
 	}
 }
 Hooks.once("init", () => {
 	registrarConfiguracoes();
 	game.modules.get(MOD).api = { abrir: () => JanelaDaMesa.abrir() };
+	game.keybindings.register(MOD, "abrir", {
+		name: "Abrir a mesa do West Marches",
+		editable: [{
+			key: "KeyM",
+			modifiers: ["Shift"]
+		}],
+		restricted: true,
+		onDown: () => {
+			JanelaDaMesa.abrir();
+			return true;
+		}
+	});
+});
+Hooks.on("getSceneControlButtons", (controls) => {
+	if (!game.user.isGM) return;
+	const tool = {
+		name: "wm-mesa",
+		title: "West Marches — Mesa (Shift+M)",
+		icon: "fas fa-dragon",
+		button: true,
+		visible: true,
+		order: 99,
+		onChange: () => JanelaDaMesa.abrir(),
+		onClick: () => JanelaDaMesa.abrir()
+	};
+	if (Array.isArray(controls)) controls.find((c) => c.name === "token")?.tools.push(tool);
+	else if (controls.tokens) controls.tokens.tools[tool.name] = tool;
 });
 Hooks.once("ready", () => {
 	if (!game.user.isGM) return;
 	vigiarPvPd();
 	vigiarApagados();
 	prepararCarimbo();
-	ciclo();
-	setInterval(() => void ciclo(), CICLO_MS);
+	ciclo("fichas");
+	ciclo("mapa");
+	setInterval(() => void ciclo("fichas"), FICHAS_MS);
+	setInterval(() => void ciclo("mapa"), MAPA_MS);
 });
 Hooks.on("chatMessage", (_log, mensagem) => {
-	if (!/^\/wm\b/i.test(String(mensagem).trim())) return;
+	const texto = String(mensagem).replace(/<[^>]*>/g, "").trim();
+	if (!/^\/wm\b/i.test(texto)) return;
 	JanelaDaMesa.abrir();
 	return false;
 });
